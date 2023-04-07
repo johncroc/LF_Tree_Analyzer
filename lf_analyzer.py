@@ -78,9 +78,12 @@ def get_metadata(cnxn_str, tocid):
                     "pv.tocid, "
                     "'Keyword Name' = pd.prop_name, " +
                     "'Keyword Value' = CASE " +
-                        "WHEN pd.prop_type IN ('L','S') THEN pv.str_val " +
-                        "WHEN pd.prop_type IN ('I','N') THEN CONVERT(VARCHAR(20), pv.num_val) " +
-                        "WHEN pd.prop_type = 'D' THEN CONVERT(VARCHAR(20), pv.date_val, 120) " +
+                        "WHEN pd.prop_type IN ('L','S') " + 
+                            "THEN pv.str_val " +
+                        "WHEN pd.prop_type IN ('I','N') " + 
+                            "THEN CONVERT(VARCHAR(20), pv.num_val) " +
+                        "WHEN pd.prop_type = 'D' " +
+                            "THEN CONVERT(VARCHAR(20), pv.date_val, 120) " +
                     "END ")
     sql_from = ("FROM " +
                     "propval pv, propdef pd")
@@ -91,24 +94,25 @@ def get_metadata(cnxn_str, tocid):
     sql = sql_select + sql_from + sql_where
 
     cxn_kwrd = pyodbc.connect(cnxn_str)
-    logging.debug('Connection successful')
-    cxn_kwrd.execute('USE Laser8;')
+    logging.debug("Connection successful")
+    cxn_kwrd.execute("USE Laser8;")
 
     cu = cxn_kwrd.cursor()
-    logging.debug('Cursor instantiated')
+    logging.debug("Cursor instantiated")
 
     cu.execute(sql)
-    logging.debug('SQL executed')
+    logging.debug("SQL executed")
     row = cu.fetchone()
 
     while row:
-        kwds.append([row[0], row[1]])
+        logging.debug("Metadata row fetched")
+        kwds.append([row[0], row[1], row[2]])
 
     return kwds
 
 
 def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
-    logging.debug('Begin walk iteration for container ' + str(obj_id))
+    logging.debug('Begin walk() iteration for container ' + str(obj_id))
 
     ## Instantiates a connection object unique to this walk() call on the stack
     cxn = pyodbc.connect(cnxn_str)
@@ -120,7 +124,6 @@ def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
     ## collect the data
     doc_list = []
     container_list = []
-    doc_count = 0
          
     sql_select = "SELECT tocid, etype "
     sql_from = "FROM toc "
@@ -143,22 +146,25 @@ def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
     row = cu.fetchone()
 
     while row:
-        logging.debug('Row fetched')
+        logging.debug('Tree row fetched')
         page_rows = []
         if row[1] == -2:  #Document
             ## DO DOCUMENT STUFF ##
             ## TODO: Send this tocid to get_page_path() and get the list 
             ##       of pages for this doc
-            ## get_page_path returns:
-            ## [tocid, doc_name, row[0], row[1], row[2], row[3]])
-            doc_pages_n_paths = get_page_path(row[0])
+            ## get_page_path returns a list of lists:
+            ## [tocid, doc_name, page_num, path_name]
+            doc_pages_n_paths = get_page_path(cnxn_str, row[0])
 
             ## TODO: Send this tocid to get_metadata() and get the metadata
             ##       for this doc
-            doc_kwds = get_metadata(cnxn_str, obj_id)
+            ## get_page_path returns a list of lists:
+            ## [tocid, key_name, key_val]
+            doc_kwds = get_metadata(cnxn_str, row[0])
             
-            for each rec in doc_kwds:
-            doc_list.append(row[0])
+            for rec in doc_kwds:
+                doc_list.append(row[0])
+
         elif row[1] == 0: #Container
             # Do container stuff
             container_list.append([row[0]])
