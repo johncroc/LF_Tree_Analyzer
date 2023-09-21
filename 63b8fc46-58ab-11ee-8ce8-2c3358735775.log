@@ -1,0 +1,8 @@
+09/21/2023 11:19:23 AM Walk begins
+09/21/2023 11:19:23 AM Begin walk() iteration for container 1
+09/21/2023 11:19:25 AM Connection successful
+09/21/2023 11:19:25 AM Laser8 set as default db
+09/21/2023 11:19:25 AM SQL = SELECT tocid, etype FROM toc WHERE parentid = 1  ORDER BY tocid asc;
+09/21/2023 11:19:25 AM Cursor instantiated
+09/21/2023 11:19:25 AM SQL executed
+09/21/2023 11:19:25 AM Tree row fetched

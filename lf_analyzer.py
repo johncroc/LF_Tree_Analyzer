@@ -129,7 +129,7 @@ def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
     sql_from = "FROM toc "
     sql_where = "WHERE parentid = " + str(obj_id) + " "
     
-    if obj_id.strip() == "NULL":
+    if obj_id == "NULL":
         sql_where = "WHERE parentid IS NULL "
                
     sql_orderby = " ORDER BY tocid asc;"
@@ -168,7 +168,7 @@ def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
         elif row[1] == 0: #Container
             # Do container stuff
             container_list.append([row[0]])
-            container_count += 1
+            ## container_count += 1
             walk(cnxn_str, row[0], data_filename)
 
         else:
@@ -211,9 +211,10 @@ cnxn_str = ("SERVER=" + server + "; " +
 
 start_container_tocid = 1
 
-try:
-    walk(cnxn_str, start_container_tocid, output_filename)
-except Exception as e: 
-    logging.debug(str(e))
+walk(cnxn_str, start_container_tocid, output_filename)
+# try:
+#     walk(cnxn_str, start_container_tocid, output_filename)
+# except Exception as e: 
+#     logging.debug(str(e))
 
-logging.info('Walk ends')
+# logging.info('Walk ends')
