@@ -1,27 +1,17 @@
 import csv
-import datetime
 import logging
 import os.path
 import uuid
 import pyodbc
+#import datetime
 
 ## *** Restart as Administrator *** ##
 
-## Gets called by walk, appends the finished lists for that iteration of 
-## walk() into the data file.
-def list_dump(doc_info_list = [], output_filename = ""):
-    
-    output_filepath = output_filename + ".csv"
-
-    with open(output_filepath, "a") as f:  
-        w = csv.writer(f)                                                          
-        w.writerows(doc_info_list)
-
 ## gets called by walk(), retrieves the paths for all the pages assoc with a particular document (tocid)
-def get_page_path(cnxn_str, tocid):
+def get_page_path(cnxn, tocid):
     logging.debug('Getting file paths for tocid = ' + str(tocid))
 
-    paths_n_pages = []
+    pages = []
 
     ## doc.storeid are normal Laserfiche Documents
     ## doc.edoc_storeid are Laserfiche "E-Docs"
@@ -51,28 +41,22 @@ def get_page_path(cnxn_str, tocid):
                 "doc.pagenum >= 0 " +
             "ORDER BY " +
                 "doc.pagenum ASC;")
-    
-    cxn_pnp = pyodbc.connect(cnxn_str)
-    logging.debug('Connection successful')
-    cxn_pnp.execute('USE Laser8;')
+    logging.debug(sql0)
 
-    cu = cxn_pnp.cursor()
-    logging.debug('Cursor instantiated')
+    with cnxn.cursor() as cu:
+        logging.debug('Cursor instantiated')
 
-    cu.execute(sql0)
-    logging.debug('SQL executed')
-    row = cu.fetchone()
+        cu.execute(sql0)
+        logging.debug('Pages SQL executed')
+        pages = cu.fetchall()
 
-    while row:
-        paths_n_pages.append([row[0], row[1], row[2], row[3]])
-
-    return paths_n_pages
+    return pages
 
 
-def get_metadata(cnxn_str, tocid):
+def get_metadata(cnxn, tocid):
     logging.debug('Getting keywords for tocid = ' + str(tocid))
 
-    kwds = []
+    rows = []
 
     sql_select = ("SELECT " +
                     "pv.tocid, "
@@ -86,108 +70,121 @@ def get_metadata(cnxn_str, tocid):
                             "THEN CONVERT(VARCHAR(20), pv.date_val, 120) " +
                     "END ")
     sql_from = ("FROM " +
-                    "propval pv, propdef pd")
+                    "propval pv, propdef pd ")
     sql_where = ("WHERE " +
                     "pv.tocid = " + str(tocid) + " AND " +
                     "pv.prop_id = pd.prop_id;")
     
     sql = sql_select + sql_from + sql_where
+    logging.debug(sql)
 
-    cxn_kwrd = pyodbc.connect(cnxn_str)
-    logging.debug("Connection successful")
-    cxn_kwrd.execute("USE Laser8;")
+    with cnxn.cursor() as cu:
+        logging.debug("Cursor instantiated")
 
-    cu = cxn_kwrd.cursor()
-    logging.debug("Cursor instantiated")
+        cu.execute(sql)
+        logging.debug("Metadata SQL executed")
+        rows = cu.fetchall()
 
-    cu.execute(sql)
-    logging.debug("SQL executed")
-    row = cu.fetchone()
-
-    while row:
-        logging.debug("Metadata row fetched")
-        kwds.append([row[0], row[1], row[2]])
-
-    return kwds
+    return rows
 
 
-def walk(cnxn_str, obj_id = "NULL", data_filename = ""):
-    logging.debug('Begin walk() iteration for container ' + str(obj_id))
-
-    ## Instantiates a connection object unique to this walk() call on the stack
-    cxn = pyodbc.connect(cnxn_str)
-    logging.debug('Connection successful')
-    cxn.execute('USE Laser8;')
-    logging.debug('Laser8 set as default db')
-
-    ## Initialize the lists and variables needed to 
-    ## collect the data
-    doc_list = []
-    container_list = []
-         
-    sql_select = "SELECT tocid, etype "
-    sql_from = "FROM toc "
-    sql_where = "WHERE parentid = " + str(obj_id) + " "
+def walk(cnxn, obj_id = "NULL"):
     
-    if obj_id == "NULL":
-        sql_where = "WHERE parentid IS NULL "
-               
-    sql_orderby = " ORDER BY tocid asc;"
+    try:
+        logging.debug('Begin walk() iteration for container ' + str(obj_id))
 
-    sql = sql_select + sql_from + sql_where + sql_orderby
-
-    logging.debug('SQL = ' + sql)
-
-    cu = cxn.cursor()
-    logging.debug('Cursor instantiated')
-
-    cu.execute(sql)
-    logging.debug('SQL executed')
-    row = cu.fetchone()
-
-    while row:
-        logging.debug('Tree row fetched')
-        page_rows = []
-        if row[1] == -2:  #Document
-            ## DO DOCUMENT STUFF ##
-            ## TODO: Send this tocid to get_page_path() and get the list 
-            ##       of pages for this doc
-            ## get_page_path returns a list of lists:
-            ## [tocid, doc_name, page_num, path_name]
-            doc_pages_n_paths = get_page_path(cnxn_str, row[0])
-
-            ## TODO: Send this tocid to get_metadata() and get the metadata
-            ##       for this doc
-            ## get_page_path returns a list of lists:
-            ## [tocid, key_name, key_val]
-            doc_kwds = get_metadata(cnxn_str, row[0])
+        ## Initialize the lists and variables needed to 
+        ## collect the data
+        doc_list = []
+        container_list = []
+        results = []
             
-            for rec in doc_kwds:
-                doc_list.append(row[0])
+        sql_select = "SELECT tocid, etype "
+        sql_from = "FROM toc "
+        sql_where = "WHERE parentid = " + str(obj_id) + " "
+        
+        if obj_id == "NULL":
+            sql_where = "WHERE parentid IS NULL "
+                
+        sql_orderby = " ORDER BY etype asc, tocid asc;"
 
-        elif row[1] == 0: #Container
-            # Do container stuff
-            container_list.append([row[0]])
-            ## container_count += 1
-            walk(cnxn_str, row[0], data_filename)
+        sql = sql_select + sql_from + sql_where + sql_orderby
+        logging.debug(sql)
 
-        else:
-            #TODO: etype is that one "-1."  Not sure yet what to do with 
-            #      that one.  Maybe ignore since it's like 0.00001%
-            pass
+        logging.debug('SQL = ' + sql)
 
-        row = cu.fetchone()
+        with cnxn.cursor() as cu:
+            logging.debug('Cursor instantiated')
 
-    list_dump(doc_list, container_list, data_filename)    
+            cu.execute(sql)
+            logging.debug('SQL executed')
+
+            ## Once you have a resultset, transfer it into a list so the
+            ## "with block" wil dispose of it when done
+            results = cu.fetchall()
+            logging.debug('Tree rows fetched')
+                
+            for row in results:
+                if row[1] == -2:  #Document
+                    ## DO DOCUMENT STUFF (grab pages, paths, and keywords) ##
+                    ## get_page_path returns a list of lists:
+                    ## [tocid, doc_name, page_num, path_name]
+                    ## TODO:  Something is happening here with the error
+                    ## 'cannot access local variable 'doc_pages_n_paths' where it is not associated with a value'
+                    ## Suspect get_page_path() is returning nothing.
+                    ## Need to test for a "nothing" return and exclude it from doing anything
+                    ## On second thought the exception block did not catch it, so it may be 
+                    ## happening at line 162
+                    doc_pages_n_paths = get_page_path(cnxn, row[0])
+
+                    ## get_page_path returns a list of lists:
+                    ## [tocid, key_name, key_val]
+                    kwds = get_metadata(cnxn, row[0])
+                    
+                elif row[1] == 0: #Container
+                    # Do container stuff
+                    walk(cnxn, row[0])
+
+                else:
+                    #TODO: etype is that one "-1."  Not sure yet what to do with 
+                    #      that one.  Maybe ignore since it's like 0.00001%
+                    pass
+
+            ## TODO: All of these inert blank lines into the file
+            ## Work out why and eliminate the issue.
+            ## Also, in keywords, it should only record records that actually 
+            ## have keywords and not record lines where there is no kwd
+            with open('results.csv', 'a') as f:
+                csv_w = csv.writer(f)
+                csv_w.writerows(results)
+
+            try:
+                with open('pages.csv', 'a') as f:
+                    csv_w = csv.writer(f)
+                    csv_w.writerows(doc_pages_n_paths)
+            except Exception as ve:
+                print(ve)
+
+            with open('doc_kwds.csv', 'a') as f:
+                csv_w = csv.writer(f)
+                csv_w.writerows(kwds)
+
+    except Exception as e:
+        logging.debug(str(e))
+        print(e)
+  
+## ------------- End of Functions ----------------------------
 
 
+## ----------------- Script ---------------------------
+logging_level = logging.info
 log_file_name = os.path.join('.', str(uuid.uuid1()) + '.log')
 logging.basicConfig(filename=log_file_name, 
                     filemode='w', 
-                    encoding='utf-8',
-                    level=logging.DEBUG, 
-                    format='%(asctime)s %(message)s', 
-                    datefmt='%m/%d/%Y %I:%M:%S %p')
+                    encoding='utf-8', 
+                    format='%(asctime)s.%(msecs)03d %(message)s', 
+                    datefmt='%Y-%m-%d %H:%M:%S', 
+                    level=logging_level)
 
 logging.info("Walk begins")
 
@@ -209,12 +206,11 @@ cnxn_str = ("SERVER=" + server + "; " +
             "TrustServerCertificate=" + trust_srvr_cert + "; " + 
             "MultipleActiveResultSets=" + mars)
 
+## Instantiate a connection that can be passed to walk()
+cnxn = pyodbc.connect(cnxn_str)
+
 start_container_tocid = 1
 
-walk(cnxn_str, start_container_tocid, output_filename)
-# try:
-#     walk(cnxn_str, start_container_tocid, output_filename)
-# except Exception as e: 
-#     logging.debug(str(e))
+walk(cnxn, start_container_tocid)
 
-# logging.info('Walk ends')
+logging.info('Walk ends')
