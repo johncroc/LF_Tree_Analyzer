@@ -129,6 +129,10 @@ def walk(cnxn, obj_id = "NULL"):
             docs_n_containers = cu.fetchall()
             logging.debug('Tree rows fetched')
                 
+            with open('docs_n_containers.csv', 'a', newline='') as f:
+                csv_w = csv.writer(f)
+                csv_w.writerows(docs_n_containers)
+                    
             for row in docs_n_containers:
                 if row[1] == -2:  #Document
                     ## DO DOCUMENT STUFF (grab pages, paths, and keywords) ##
@@ -173,7 +177,7 @@ try:
 
     logging.info("Walk begins")
 
-    start_container_tocid = 1
+    start_container_tocid = 7525
     dsn_string = "DSN=LaserFicheDb"
     output_filename = "TestRun003"
     odbc_ver = "ODBC Driver 18 for SQL Server"
