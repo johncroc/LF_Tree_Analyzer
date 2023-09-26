@@ -129,8 +129,9 @@ def walk(cnxn, obj_id = "NULL"):
             docs_n_containers = cu.fetchall()
             logging.debug('Tree rows fetched')
                 
-            with open('docs_n_containers.csv', 'a', newline='') as f:
+            with open('lf_data.csv', 'a', newline='') as f:
                 csv_w = csv.writer(f)
+                csv_w.writerow('docs = -2, containers = 0')
                 csv_w.writerows(docs_n_containers)
                     
             for row in docs_n_containers:
@@ -138,14 +139,16 @@ def walk(cnxn, obj_id = "NULL"):
                     ## DO DOCUMENT STUFF (grab pages, paths, and keywords) ##
                     ## get_page_path returns a list of lists:
                     ## [tocid, doc_name, page_num, path_name]
-                    with open('pages.csv', 'a', newline='') as f:
+                    with open('lf_data.csv', 'a', newline='') as f:
                         csv_w = csv.writer(f)
+                        csv_w.writerow('docs in container = ' + str(obj_id))
                         csv_w.writerows(get_page_path(cnxn, row[0]))
 
                     ## get_page_path returns a list of lists:
                     ## [tocid, key_name, key_val]
-                    with open('kwds.csv', 'a', newline='') as f:
+                    with open('lf_data.csv', 'a', newline='') as f:
                         csv_w = csv.writer(f)
+                        csv_w.writerow('containers in container ' + str(obj_id))
                         csv_w.writerows(get_metadata(cnxn, row[0]))
                     
                 elif row[1] == 0: #Container
@@ -177,7 +180,8 @@ try:
 
     logging.info("Walk begins")
 
-    start_container_tocid = 7525
+    start_container_tocid = 1
+    
     dsn_string = "DSN=LaserFicheDb"
     output_filename = "TestRun003"
     odbc_ver = "ODBC Driver 18 for SQL Server"
