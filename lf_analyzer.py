@@ -94,9 +94,7 @@ def get_metadata(cnxn, tocid):
 
     return rows
 
-## TODO: status = changed, not tested
-## Add an argument for "data file name" and use os.path to create it in script
-def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv'):
+def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdata.txt'):
     
     try:
         logging.info('Begin walk() iteration for container ' + str(obj_id))
@@ -104,6 +102,8 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv'):
         ## Initialize the lists and variables needed to 
         ## collect the data
         docs_n_containers = []
+        doc_count = 0
+        container_count = 0
             
         sql_select = "SELECT tocid, etype "
         sql_from = "FROM toc "
@@ -134,32 +134,24 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv'):
                 csv_w = csv.writer(f)
                 csv_w.writerow('docs = -2, containers = 0')
                 csv_w.writerows(docs_n_containers)
-                    
+
             for row in docs_n_containers:
                 if row[1] == -2:  #Document
-                    ## DO DOCUMENT STUFF (grab pages, paths, and keywords) ##
-                    ## get_page_path returns a list of lists:
-                    ## [tocid, doc_name, page_num, path_name]
+                    ## Increment doc_count
+                    doc_count += 1
+
                     with open(data_file, 'a', newline='') as f:
                         csv_w = csv.writer(f)
-                        ## TODO: status = changed, not tested
-                        ## csv.writerow() takes a list.  If you give it a 
-                        ## string, strings are lists so it breaks the string 
-                        ## into individual characters.  Give it a list like
-                        ## ['docs in container ',str(obj_id)]
-                        ## 
-                        csv_w.writerow(['docs in container = ', str(obj_id)])
+                        csv_w.writerow(['Images associated with doc: ' + str(row[0])])
                         csv_w.writerows(get_page_path(cnxn, row[0]))
 
-                        ## get_page_path returns a list of lists:
-                        ## [tocid, key_name, key_val]
-                        csv_w = csv.writer(f)
-                        ## TODO: status = changed, not tested
-                        ## ['containers in container ',str(obj_id)]
-                        csv_w.writerow(['containers in container ', str(obj_id)])
+                        csv_w.writerow(['Metadata associated with doc: ', str(row[0])])
                         csv_w.writerows(get_metadata(cnxn, row[0]))
                     
                 elif row[1] == 0: #Container
+                    ## Increment container_count
+                    container_count += 1
+
                     # Do container stuff
                     walk(cnxn, row[0], data_file)
 
@@ -169,6 +161,13 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv'):
                     #  that one.  Maybe ignore since it's like 0.00001%
                     pass
 
+        ## Write counts out to some file
+        with open(mdata_file, 'a') as f:
+            f.writelines(['toc.parentid = ' + str(obj_id) + ' contains:', 
+                          str(container_count) + ' Containers and ' + 
+                          str(doc_count) + ' Docs', 
+                          '-' * 30])
+ 
     except Exception as e:
         logging.warning(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -178,7 +177,10 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv'):
 
 ## ----------------- Script ---------------------------
 try:
-    log_file_name = os.path.join('s:', 'Information Technology', 'JC Misc', str(uuid.uuid1()) + '.log')
+    log_file_name = os.path.join('s:', 
+                                 'Information Technology', 
+                                 'JC Misc', 
+                                 str(uuid.uuid1()) + '.log')
     logging.basicConfig(filename=log_file_name, 
                         filemode='w', 
                         encoding='utf-8', 
@@ -188,11 +190,16 @@ try:
 
     logging.info("Walk begins")
 
-    ## TODO:  Status = changed, not tested
-    ## Use os.path() to specify a path for the data file 
-    ## ('s:\Information Technology\JC Misc\lf_data.csv')
-    data_file_path = os.path.join('s:', 'Information Technology', 'JC Misc', 'lf_data.csv')
-    start_container_tocid = 92498
+    data_file_path = os.path.join('s:', 
+                                  'Information Technology', 
+                                  'JC Misc', 
+                                  'lf_data.csv')
+    
+    mdata_file_path = os.path.join('s:', 
+                                   'Information Technology', 
+                                   'JC Misc', 
+                                   'lf_mdata.txt')
+    start_container_tocid = 1 #92498
     
     dsn_string = "DSN=LaserFicheDb"
     output_filename = "TestRun003"
@@ -212,7 +219,7 @@ try:
     ## Instantiate a connection that can be passed to walk()
     cnxn = pyodbc.connect(cnxn_str)
 
-    walk(cnxn, start_container_tocid, data_file_path)
+    walk(cnxn, start_container_tocid, data_file_path, mdata_file_path)
 
     logging.info('Walk ends')
 
