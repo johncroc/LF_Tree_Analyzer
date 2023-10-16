@@ -163,10 +163,10 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdat
 
         ## Write counts out to some file
         with open(mdata_file, 'a') as f:
-            f.writelines(['toc.parentid = ' + str(obj_id) + ' contains:', 
-                          str(container_count) + ' Containers and ' + 
+            f.writelines(['\ntoc.parentid = ' + str(obj_id) + ' contains:', 
+                          '\n' + str(container_count) + ' Containers and ' + 
                           str(doc_count) + ' Docs', 
-                          '-' * 30])
+                          '\n' + ('-' * 30)])
  
     except Exception as e:
         logging.warning(e)
