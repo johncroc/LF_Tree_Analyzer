@@ -153,7 +153,7 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdat
                     container_count += 1
 
                     # Do container stuff
-                    walk(cnxn, row[0], data_file)
+                    walk(cnxn, row[0], data_file, mdata_file)
 
                 else:
                     #TODO: status = undecided
@@ -163,10 +163,8 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdat
 
         ## Write counts out to some file
         with open(mdata_file, 'a') as f:
-            f.writelines(['\ntoc.parentid = ' + str(obj_id) + ' contains:', 
-                          '\n' + str(container_count) + ' Containers and ' + 
-                          str(doc_count) + ' Docs', 
-                          '\n' + ('-' * 30)])
+            csv_w = csv.writer(f)
+            csv_w.writerow([str(obj_id), str(container_count), str(doc_count)])
  
     except Exception as e:
         logging.warning(e)
@@ -198,7 +196,7 @@ try:
     mdata_file_path = os.path.join('s:', 
                                    'Information Technology', 
                                    'JC Misc', 
-                                   'lf_mdata.txt')
+                                   'lf_mdata.csv')
     start_container_tocid = 1 #92498
     
     dsn_string = "DSN=LaserFicheDb"
@@ -218,6 +216,11 @@ try:
 
     ## Instantiate a connection that can be passed to walk()
     cnxn = pyodbc.connect(cnxn_str)
+
+    with open(mdata_file_path, 'a') as f:
+        csv_w = csv.writer(f)
+        csv_w.writerow(['toc.parentid', 'container_count', 'doc_count'])
+
 
     walk(cnxn, start_container_tocid, data_file_path, mdata_file_path)
 
