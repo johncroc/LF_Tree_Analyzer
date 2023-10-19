@@ -132,7 +132,7 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdat
                 
             with open(data_file, 'a', newline='') as f:
                 csv_w = csv.writer(f)
-                csv_w.writerow('docs = -2, containers = 0')
+                csv_w.writerow(['docs = -2', 'containers = 0'])
                 csv_w.writerows(docs_n_containers)
 
             for row in docs_n_containers:
