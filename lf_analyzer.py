@@ -162,7 +162,7 @@ def walk(cnxn, obj_id = "NULL", data_file = 'lf_data.csv', mdata_file = 'lf_mdat
                     pass
 
         ## Write counts out to some file
-        with open(mdata_file, 'a') as f:
+        with open(mdata_file, 'a', newline='') as f:
             csv_w = csv.writer(f)
             csv_w.writerow([str(obj_id), str(container_count), str(doc_count)])
  
@@ -197,7 +197,7 @@ try:
                                    'Information Technology', 
                                    'JC Misc', 
                                    'lf_mdata.csv')
-    start_container_tocid = 1 #92498
+    start_container_tocid = 107923
     
     dsn_string = "DSN=LaserFicheDb"
     output_filename = "TestRun003"
@@ -219,7 +219,10 @@ try:
 
     with open(mdata_file_path, 'a') as f:
         csv_w = csv.writer(f)
-        csv_w.writerow(['toc.parentid', 'container_count', 'doc_count'])
+        csv_w.writerow([#'toc.parentid', 
+                        'toc.tocid', 
+                        'container_count', 
+                        'doc_count'])
 
 
     walk(cnxn, start_container_tocid, data_file_path, mdata_file_path)
